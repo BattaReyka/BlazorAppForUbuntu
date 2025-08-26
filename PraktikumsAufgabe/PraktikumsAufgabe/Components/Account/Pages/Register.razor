@@ -1,0 +1,337 @@
+﻿@page "/Account/Register"
+@using System.ComponentModel.DataAnnotations
+@using System.Text
+@using System.Text.Encodings.Web
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.WebUtilities
+@using PraktikumsAufgabe.Data
+@using System.Globalization
+@using Microsoft.EntityFrameworkCore
+
+
+@inject ApplicationDbContext DbContext
+@inject UserManager<ApplicationUser> UserManager
+@inject IUserStore<ApplicationUser> UserStore
+@inject SignInManager<ApplicationUser> SignInManager
+@inject IEmailSender<ApplicationUser> EmailSender
+@inject ILogger<Register> Logger
+@inject NavigationManager NavigationManager
+@inject IdentityRedirectManager RedirectManager
+
+<PageTitle>Register</PageTitle>
+<h1>Register</h1>
+<div class="row-cols-auto">
+    <div class="col-md-4 align-content-md-stretch align-content-lg-stretch w-auto">
+        <StatusMessage Message="@Message" />
+        <MudPaper Class="pa-6 max-w-lg mx-auto mt-10 rounded-xl shadow-lg" Elevation="10">
+            <EditForm Model="@Input" OnValidSubmit="RegisterUser" FormName="register">
+                <DataAnnotationsValidator />
+                <ValidationSummary Class="text-danger mb-4" />
+
+                <h2 class="mb-4 text-center">Create a new account</h2>
+
+                <div class="d-grid gap-3">
+
+                    <!-- Email -->
+                    <div class="form-floating">
+                        <InputText id="email" class="form-control" @bind-Value="Input.Email" placeholder="name@example.com" autocomplete="username" />
+                        <label for="email">Email</label>
+                        <ValidationMessage For="() => Input.Email" class="text-danger" />
+                    </div>
+
+                    <!-- Password -->
+                    <div class="form-floating">
+                        <InputText id="password" type="password" class="form-control" @bind-Value="Input.Password" placeholder="Password" autocomplete="new-password" ShowHidePassword="true" />
+                        <label for="password">Password</label>
+                        <ValidationMessage For="() => Input.Password" class="text-danger" />
+                    </div>
+
+                    <!-- Confirm Password -->
+                    <div class="form-floating">
+                        <InputText id="confirmPassword" type="password" class="form-control" @bind-Value="Input.ConfirmPassword" placeholder="Confirm Password" autocomplete="new-password" />
+                        <label for="confirmPassword">Confirm Password</label>
+                        <ValidationMessage For="() => Input.ConfirmPassword" class="text-danger" />
+                    </div>
+
+                    <!-- Vorname / Nachname -->
+                    <div class="d-flex gap-2">
+                        <div class="form-floating flex-fill">
+                            <InputText id="vorname" class="form-control" @bind-Value="Input.Vorname" placeholder="Vorname" />
+                            <label for="vorname">Vorname</label>
+                            <ValidationMessage For="() => Input.Vorname" class="text-danger" />
+                        </div>
+                        <div class="form-floating flex-fill">
+                            <InputText id="nachname" class="form-control" @bind-Value="Input.Nachname" placeholder="Nachname" />
+                            <label for="nachname">Nachname</label>
+                            <ValidationMessage For="() => Input.Nachname" class="text-danger" />
+                        </div>
+                    </div>
+
+                    <!-- Gender / Geburtsdatum -->
+                    <div class="d-flex gap-2">
+                        <div class="form-floating flex-fill">
+                            <InputSelect id="gender" class="form-control" @bind-Value="Input.Geschlecht">
+                                <option value="">Bitte auswählen</option>
+                                @foreach (var gender in genderItems)
+                                {
+                                    <option value="@gender">@gender</option>
+                                }
+                            </InputSelect>
+                            <label for="gender">Gender</label>
+                            <ValidationMessage For="() => Input.Geschlecht" class="text-danger" />
+                        </div>
+                        <div class="form-floating flex-fill">
+                            <InputDate id="geburtsdatum" class="form-control" @bind-Value="Input.Geburtsdatum" />
+                            <label for="geburtsdatum">Geburtsdatum</label>
+                            <ValidationMessage For="() => Input.Geburtsdatum" class="text-danger" />
+                        </div>
+                    </div>
+
+                    <!-- Strasse / PLZ / Ort -->
+                    <div class="form-floating">
+                        <InputText id="strasse" class="form-control" @bind-Value="Input.Strasse" placeholder="Strasse" />
+                        <label for="strasse">Strasse</label>
+                        <ValidationMessage For="() => Input.Strasse" class="text-danger" />
+                    </div>
+                    <div class="d-flex gap-2">
+                        <div class="form-floating flex-fill">
+                            <InputText id="plz" class="form-control" @bind-Value="Input.PLZ" placeholder="PLZ" />
+                            <label for="plz">PLZ</label>
+                            <ValidationMessage For="() => Input.PLZ" class="text-danger" />
+                        </div>
+                        <div class="form-floating flex-fill">
+                            <InputText id="ort" class="form-control" @bind-Value="Input.Ort" placeholder="Ort" />
+                            <label for="ort">Ort</label>
+                            <ValidationMessage For="() => Input.Ort" class="text-danger" />
+                        </div>
+                    </div>
+
+                    <!-- Land / Telefon -->
+                    <div class="d-flex gap-2">
+                        <div class="form-floating flex-fill">
+                            <InputSelect @bind-Value="Input.Land" class="form-control">
+                                <option value="">-- Choose Country --</option>
+                                @foreach (var country in countriesFromDb)
+                                {
+                                    <option value="@country.Name">@country.Name</option>
+                                }
+                            </InputSelect>
+                        </div>
+                        <div class="form-floating flex-fill">
+                            <InputText id="telefon" class="form-control" @bind-Value="Input.Telefon" placeholder="Telefon" />
+                            <label for="telefon">Telefon</label>
+                            <ValidationMessage For="() => Input.Telefon" class="text-danger" />
+                        </div>
+                    </div>
+
+                    <!-- Telefon2 / Geburtsort -->
+                    <div class="d-flex gap-2">
+                        <div class="form-floating flex-fill">
+                            <InputText id="telefon2" class="form-control" @bind-Value="Input.telefon2" placeholder="Telefon 2" />
+                            <label for="telefon2">Telefon 2</label>
+                            <ValidationMessage For="() => Input.telefon2" class="text-danger" />
+                        </div>
+                        <div class="form-floating flex-fill">
+                            <InputText id="geburtsort" class="form-control" @bind-Value="Input.Geburtsort" placeholder="Geburtsort" />
+                            <label for="geburtsort">Geburtsort</label>
+                            <ValidationMessage For="() => Input.Geburtsort" class="text-danger" />
+                        </div>
+                    </div>
+
+                    <!-- Bemerkung -->
+                    <div class="form-floating">
+                        <InputText id="bemerkung" class="form-control" @bind-Value="Input.Bemerkung" placeholder="Bemerkung" />
+                        <label for="bemerkung">Bemerkung</label>
+                        <ValidationMessage For="() => Input.Bemerkung" class="text-danger" />
+                    </div>
+
+                    <!-- Submit -->
+                    <button type="submit" class="btn btn-primary w-full mt-3 py-2">
+                        Register
+                    </button>
+
+                </div>
+            </EditForm>
+        </MudPaper>
+
+    </div>
+</div>
+
+@code {
+    private bool isPasswordVisible = false;
+    private string passwordInputType => isPasswordVisible ? "text" : "password";
+
+    private void TogglePasswordVisibility()
+    {
+        isPasswordVisible = !isPasswordVisible;
+    }
+    private IEnumerable<IdentityError>? identityErrors;
+
+    [SupplyParameterFromForm]
+    private InputModel Input { get; set; } = new();
+
+    [SupplyParameterFromQuery]
+    private string? ReturnUrl { get; set; }
+
+    private string? Message => identityErrors is null ? null : $"Error: {string.Join(", ", identityErrors.Select(error => error.Description))}";
+
+    public async Task RegisterUser(EditContext editContext)
+    {
+        var user = CreateUser();
+
+        user.Vorname = Input.Vorname;
+        user.Nachname = Input.Nachname;
+        user.Geschlecht = Input.Geschlecht;
+        user.Geburtsdatum = Input.Geburtsdatum;
+        user.Strasse = Input.Strasse;
+		user.CountryId = countriesFromDb.FirstOrDefault(c => c.Name == Input.Land)?.Id;
+        user.PLZ = Input.PLZ;
+        user.Ort = Input.Ort;
+        user.Telefon = Input.Telefon;
+        user.telefon2 = Input.telefon2;
+        user.Geburtsort = Input.Geburtsort;
+        user.Bemerkung = Input.Bemerkung;
+
+        await UserStore.SetUserNameAsync(user, Input.Email, CancellationToken.None);
+        var emailStore = GetEmailStore();
+        await emailStore.SetEmailAsync(user, Input.Email, CancellationToken.None);
+
+        var result = await UserManager.CreateAsync(user, Input.Password);
+
+        if (!result.Succeeded)
+        {
+            identityErrors = result.Errors;
+            return;
+        }
+
+        Logger.LogInformation("User created a new account with password.");
+
+        var userId = await UserManager.GetUserIdAsync(user);
+        var code = await UserManager.GenerateEmailConfirmationTokenAsync(user);
+        code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
+        var callbackUrl = NavigationManager.GetUriWithQueryParameters(
+            NavigationManager.ToAbsoluteUri("Account/ConfirmEmail").AbsoluteUri,
+            new Dictionary<string, object?> { ["userId"] = userId, ["code"] = code, ["returnUrl"] = ReturnUrl });
+
+        await EmailSender.SendConfirmationLinkAsync(user, Input.Email, HtmlEncoder.Default.Encode(callbackUrl));
+
+        if (UserManager.Options.SignIn.RequireConfirmedAccount)
+        {
+            RedirectManager.RedirectTo(
+                "Account/RegisterConfirmation",
+                new() { ["email"] = Input.Email, ["returnUrl"] = ReturnUrl });
+        }
+
+        await SignInManager.SignInAsync(user, isPersistent: false);
+        RedirectManager.RedirectTo(ReturnUrl);
+    }
+
+    private ApplicationUser CreateUser()
+    {
+        try
+        {
+            return Activator.CreateInstance<ApplicationUser>();
+        }
+        catch
+        {
+            throw new InvalidOperationException($"Can't create an instance of '{nameof(ApplicationUser)}'. " +
+                $"Ensure that '{nameof(ApplicationUser)}' is not an abstract class and has a parameterless constructor.");
+        }
+    }
+
+    private IUserEmailStore<ApplicationUser> GetEmailStore()
+    {
+        if (!UserManager.SupportsUserEmail)
+        {
+            throw new NotSupportedException("The default UI requires a user store with email support.");
+        }
+        return (IUserEmailStore<ApplicationUser>)UserStore;
+    }
+
+    private bool disabled = false;
+    private string[] genderItems = new string[] { "männlich", "weiblich", "divers" };
+    private List<Countries> countriesFromDb = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        countriesFromDb = await DbContext.Countries.ToListAsync();
+    }
+
+    private sealed class InputModel
+    {
+        [Required]
+        [EmailAddress]
+        [Display(Name = "Email")]
+        [RegularExpression(@"^[^@\s]+@[^@\s]+\.[^@\s]+$", ErrorMessage = "Email must conain . after @")]
+        public string Email { get; set; } = "";
+
+        [Required]
+        [StringLength(100, ErrorMessage = "The {0} must be at least {2} and at max {1} characters long.", MinimumLength = 6)]
+        [DataType(DataType.Password)]
+        [Display(Name = "Password")]
+        public string Password { get; set; } = "";
+
+        [DataType(DataType.Password)]
+        [Display(Name = "Confirm password")]
+        [Compare("Password", ErrorMessage = "The password and confirmation password do not match.")]
+        public string ConfirmPassword { get; set; } = "";
+
+        [Required]
+        [DataType(DataType.Text)]
+        [Display(Name = "Vorname")]
+        public string Vorname { get; set; } = "";
+
+        [Required]
+        [DataType(DataType.Text)]
+        [Display(Name = "Nachname")]
+        public string Nachname { get; set; } = "";
+
+        [Required]
+        [DataType(DataType.Text)]
+        [Display(Name = "Geschlecht")]
+        public string Geschlecht { get; set; } = "";
+
+        [DataType(DataType.Date)]
+        [Display(Name = "Geburtsdatum")]
+        public DateTime Geburtsdatum { get; set; }
+
+        [Required]
+        [DataType(DataType.Text)]
+        [Display(Name = "Strasse")]
+        public string Strasse { get; set; } = "";
+
+        [Required]
+        [DataType(DataType.Text)]
+        [Display(Name = "PLZ")]
+        public string PLZ { get; set; } = "";
+
+        [Required]
+        [DataType(DataType.Text)]
+        [Display(Name = "Ort")]
+        public string Ort { get; set; } = "";
+
+        [Required]
+        [DataType(DataType.Text)]
+        [Display(Name = "Land")]
+        public string Land { get; set; } = "";
+
+        [Required]
+        [DataType(DataType.Text)]
+        [Display(Name = "Telefon")]
+        public string Telefon { get; set; } = "";
+
+		[DataType(DataType.Text)]
+        [Display(Name = "Telefon 2")]
+		public string telefon2 { get; set; } = "";
+
+        [DataType(DataType.Text)]
+        [Display(Name = "Geburtsort")]
+        public string Geburtsort { get; set; } = "";
+
+        [DataType(DataType.Text)]
+        [Display(Name = "Bemerkung")]
+        public string Bemerkung { get; set; } = "";
+
+		public bool Aktiv { get; set; } = true;
+    }
+}

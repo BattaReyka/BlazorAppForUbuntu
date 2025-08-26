@@ -1,0 +1,95 @@
+﻿@page "/numbers"
+@using Microsoft.AspNetCore.SignalR.Client
+@using PraktikumsAufgabe.Services
+@using PraktikumsAufgabe.Hubs
+@using PraktikumsAufgabe.Data
+@inject NavigationManager Nav
+@implements IAsyncDisposable
+@rendermode InteractiveServer
+
+<h3>Realtime Number Stream</h3>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>№</th>
+            <th style="cursor: pointer;" @onclick="@(() => SortBy("Timestamp"))">
+                Timestamp @(sortColumn == "Timestamp" ? (ascending ? "▲" : "▼") : "")
+            </th>
+            <th style="cursor: pointer;" @onclick="@(() => SortBy("Value"))">
+                Value @(sortColumn == "Value" ? (ascending ? "▲" : "▼") : "")
+            </th>
+        </tr>
+    </thead>
+    <tbody>
+        @for (int i = 0; i < entries.Count; i++)
+        {
+            <tr>
+                <td>@entries[i].Id</td>
+                <td>@entries[i].Timestamp.ToString()</td>
+                <td>@entries[i].Value</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+
+@code {
+    private HubConnection? hubConnection;
+    private List<RandomEntry> entries = [];
+    private string sortColumn = "Timestamp";
+    private bool ascending = true;
+    private int counter = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl(Nav.ToAbsoluteUri("/randomnumberhub"))
+            .WithAutomaticReconnect()
+            .Build();
+
+        hubConnection.On<RandomEntry>("ReceiveNumber", (number) =>
+        {
+            counter++;
+            number.Id = counter;
+            entries.Add(number);
+
+            if (entries.Count > 25)
+                entries = entries.Skip(entries.Count - 25).ToList();
+
+            SortEntries();
+            InvokeAsync(StateHasChanged);
+        });
+
+        await hubConnection.StartAsync();
+    }
+
+    private void SortBy(string column)
+    {
+        if (sortColumn == column)
+            ascending = !ascending;
+        else
+        {
+            sortColumn = column;
+            ascending = true;
+        }
+
+        SortEntries();
+        StateHasChanged();
+    }
+
+    private void SortEntries()
+    {
+        entries = sortColumn switch
+        {
+            "Value" => ascending ? entries.OrderBy(e => e.Value).ToList() : entries.OrderByDescending(e => e.Value).ToList(),
+            _ => ascending ? entries.OrderBy(e => e.Timestamp).ToList() : entries.OrderByDescending(e => e.Timestamp).ToList()
+        };
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (hubConnection is not null)
+            await hubConnection.DisposeAsync();
+    }
+}

@@ -1,0 +1,336 @@
+﻿@page "/admin/users"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = "Admin")]
+
+@inject ApplicationDbContext DbContext
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using PraktikumsAufgabe.Data
+@inject UserManager<ApplicationUser> UserManager
+@inject RoleManager<IdentityRole> RoleManager
+
+<h2>Admin Panel</h2>
+<MudPaper>
+<table class="table">
+    <thead>
+        <tr>
+            <th>Id</th>
+            <th>User Name</th>
+            <th>Email</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var user in ColUsers)
+        {
+            <tr>
+                <td>@user.Id.Substring(0, 5)...</td>
+                <td>@user.UserName</td>
+                <td>@user.Email</td>
+                <td>
+						@if (user.Aktiv){
+				    <button class="btn btn-danger btn-sm" @onclick="() => DeactivateUser(user)">Deactivate </button>
+                        }else{
+					<button class="btn btn-info btn-sm" @onclick="() => ActivateUser(user)">Activate </button>
+                    }
+                    <button class="btn btn-warning btn-sm" @onclick="() => EditUser(user)">Edit</button>
+                    <button class="btn btn-danger btn-sm" @onclick="() => DeleteUser(user)">Delete</button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+</MudPaper>
+@if (ShowEditPopup)
+{
+    <div class="modal" style="display:block" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 class="modal-title">@((string.IsNullOrEmpty(objUser.Id)) ? "Add User" : "Edit User")</h3>
+                    <button type="button" class="close" @onclick="ClosePopup">X</button>
+                </div>
+                <div class="modal-body">
+                    <input class="form-control mb-2" placeholder="UserName" @bind="objUser.UserName" />
+                    <input class="form-control mb-2" placeholder="Email" @bind="objUser.Email" />
+					<input class="form-control mb-2" placeholder="Vorname" @bind="objUser.Vorname" />
+                    <input class="form-control mb-2" placeholder="Nachname" @bind="objUser.Nachname" />
+                    <input class="form-control mb-2" placeholder="Geschlecht" @bind="objUser.Geschlecht" />
+                    <input class="form-control mb-2" placeholder="Geburtsdatum" type="date" @bind="objUser.Geburtsdatum" />
+                    <input class="form-control mb-2" placeholder="Strasse" @bind="objUser.Strasse" />
+                    <input class="form-control mb-2" placeholder="PLZ" @bind="objUser.PLZ" />
+                    <input class="form-control mb-2" placeholder="Ort" @bind="objUser.Ort" />
+                    <InputSelect @bind-Value="objUser.CountryId" class="form-control" placaholder="objUser.Country">
+                        <option value="">-- Choose Country --</option>
+                        @foreach (var country in countriesFromDb)
+                        {
+                            <option value="@country.Name">@country.Name</option>
+                        }
+                    </InputSelect>
+                    <input class="form-control mb-2" placeholder="Telefon" @bind="objUser.Telefon" />
+                    <input class="form-control mb-2" placeholder="Telefon 2" @bind="objUser.telefon2" />
+                    <input class="form-control mb-2" placeholder="Geburtsort" @bind="objUser.Geburtsort" />
+                    <input class="form-control mb-2" placeholder="Bemerkung" @bind="objUser.Bemerkung" />
+                    @if (string.IsNullOrEmpty(objUser.Id))
+                    {
+                        <input class="form-control mb-2" placeholder="Password" type="password" @bind="Password" ShowHidePassword="true" />
+                    }
+                    <select class="form-control mb-2" @bind="CurrentUserRole">
+                        @foreach (var option in Options)
+                        {
+                            <option value="@option">@option</option>
+                        }
+                    </select>
+                    <span class="text-danger">@strError</span>
+                    <br />
+                    <button class="btn btn-success" @onclick="SaveUser">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+@if (ShowAddPopup)
+{
+    <div class="modal" style="display:block" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 class="modal-title">@((string.IsNullOrEmpty(objUser.Id)) ? "Add User" : "Edit User")</h3>
+                    <button type="button" class="close" @onclick="ClosePopup">X</button>
+                </div>
+                <div class="modal-body">
+                    <input class="form-control mb-2" placeholder="UserName" @bind="objUser.UserName" />
+                    <input class="form-control mb-2" placeholder="Email" @bind="objUser.Email" />
+                    <input class="form-control mb-2" placeholder="Vorname" @bind="objUser.Vorname" />
+                    <input class="form-control mb-2" placeholder="Nachname" @bind="objUser.Nachname" />
+                    <input class="form-control mb-2" placeholder="Geschlecht" @bind="objUser.Geschlecht" />
+                    <input class="form-control mb-2" placeholder="Geburtsdatum" type="date" @bind="objUser.Geburtsdatum" />
+                    <input class="form-control mb-2" placeholder="Strasse" @bind="objUser.Strasse" />
+                    <input class="form-control mb-2" placeholder="PLZ" @bind="objUser.PLZ" />
+                    <input class="form-control mb-2" placeholder="Ort" @bind="objUser.Ort" />
+                    <InputSelect @bind-Value="objUser.CountryId" class="form-control" placaholder="objUser.Country">
+                        <option value="">-- Choose Country --</option>
+                        @foreach (var country in countriesFromDb)
+                        {
+                            <option value="@country.Name">@country.Name</option>
+                        }
+                    </InputSelect>
+                    <input class="form-control mb-2" placeholder="Telefon" @bind="objUser.Telefon" />
+                    <input class="form-control mb-2" placeholder="Telefon 2" @bind="objUser.telefon2" />
+                    <input class="form-control mb-2" placeholder="Geburtsort" @bind="objUser.Geburtsort" />
+                    <input class="form-control mb-2" placeholder="Bemerkung" @bind="objUser.Bemerkung" />
+                    <input class="form-control mb-2" placeholder="Password" type="password" @bind="Password" ShowHidePassword="true"/>
+                    <select class="form-control mb-2" @bind="CurrentUserRole">
+                        @foreach (var option in Options)
+                        {
+                            <option value="@option">@option</option>
+                        }
+                    </select>
+                    <span class="text-danger">@strError</span>
+                    <br />
+                    <button class="btn btn-success" @onclick="SaveUser">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (ShowDeleteMessage)
+{
+    <div class="alert alert-success mt-2">User deleted successfully!</div>
+}
+
+<button class="btn btn-primary mt-2" @onclick="AddNewUser">Add User</button>
+
+@code {
+    private List<ApplicationUser> ColUsers = new List<ApplicationUser>();
+    private ApplicationUser objUser = new ApplicationUser();
+    private List<Countries> countriesFromDb = new();
+    private string Password = "";
+    string newUserId = "";
+    private string CurrentUserRole = "User";
+    private Dictionary<string, string> UserRoles = new Dictionary<string, string>();
+    private List<string> Options = new List<string> { "User", "Admin" };
+    private string strError = "";
+	private bool ShowAddPopup = false;
+    private bool ShowEditPopup = false;
+    private bool ShowDeleteMessage = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        countriesFromDb = await DbContext.Countries.ToListAsync();
+        await LoadUsersAsync();
+    }
+
+    private async Task LoadUsersAsync()
+    {
+        ColUsers = await UserManager.Users.ToListAsync();
+        UserRoles.Clear();
+        foreach (var user in ColUsers)
+        {
+            var roles = await UserManager.GetRolesAsync(user);
+            UserRoles[user.Id] = roles.FirstOrDefault() ?? "N/A";
+        }
+    }
+
+    void AddNewUser()
+    {
+        objUser = new ApplicationUser();
+		newUserId = objUser.Id;
+        Password = "";
+        CurrentUserRole = "User";
+        strError = "";
+        ShowAddPopup = true;
+        StateHasChanged();
+    }
+
+    async Task EditUser(ApplicationUser user)
+    {
+        objUser = await UserManager.FindByIdAsync(user.Id);
+        if (objUser != null)
+        {
+            var roles = await UserManager.GetRolesAsync(objUser);
+            CurrentUserRole = roles.FirstOrDefault() ?? "User";
+            strError = "";
+            ShowEditPopup = true;
+        }
+    }
+
+    void ClosePopup()
+    {
+        ShowEditPopup = false;
+		ShowAddPopup = false;
+        strError = "";
+    }
+
+    async Task SaveUser()
+    {
+        strError = "";
+        try
+        {
+            if (objUser.Id == newUserId)
+            {
+                // Creating a new user
+                var newUser = new ApplicationUser
+                {
+                    UserName = objUser.UserName,
+                    Email = objUser.Email
+                };
+
+                var createResult = await UserManager.CreateAsync(newUser, Password);
+                if (!createResult.Succeeded)
+                {
+                    strError = string.Join("; ", createResult.Errors.Select(e => e.Description));
+                    return;
+                }
+
+                var roleResult = await UserManager.AddToRoleAsync(newUser, CurrentUserRole);
+                if (!roleResult.Succeeded)
+                {
+                    strError = string.Join("; ", roleResult.Errors.Select(e => e.Description));
+                    await UserManager.DeleteAsync(newUser); // Rollback user creation
+                    return;
+                }
+            }
+            else
+            {
+                // Editing an existing user
+                var userToUpdate = await UserManager.FindByIdAsync(objUser.Id);
+                if (userToUpdate != null)
+                {
+                    userToUpdate.UserName = objUser.UserName;
+                    userToUpdate.Email = objUser.Email;
+
+                    var updateResult = await UserManager.UpdateAsync(userToUpdate);
+                    if (!updateResult.Succeeded)
+                    {
+                        strError = string.Join("; ", updateResult.Errors.Select(e => e.Description));
+                        return;
+                    }
+
+                    var currentRoles = await UserManager.GetRolesAsync(userToUpdate);
+                    await UserManager.RemoveFromRolesAsync(userToUpdate, currentRoles);
+                    var roleResult = await UserManager.AddToRoleAsync(userToUpdate, CurrentUserRole);
+                    if (!roleResult.Succeeded)
+                    {
+                        strError = string.Join("; ", roleResult.Errors.Select(e => e.Description));
+                        return;
+                    }
+                }
+            }
+
+            ShowAddPopup = false;
+            await LoadUsersAsync();
+        }
+        catch (Exception ex)
+        {
+            strError = ex.Message;
+        }
+    }
+
+    async Task DeactivateUser(ApplicationUser user)
+    {
+        var existingUser = await UserManager.FindByIdAsync(user.Id);
+        if (existingUser != null)
+        {
+            existingUser.Aktiv = false; // Assuming 'Aktiv' is a property to deactivate the user
+            var result = await UserManager.UpdateAsync(existingUser);
+            if (result.Succeeded)
+            {
+                ShowDeleteMessage = true;
+                await LoadUsersAsync();
+                StateHasChanged();
+                // Hide the message after a delay
+                await Task.Delay(3000);
+                ShowDeleteMessage = false;
+                StateHasChanged();
+            }
+            else
+            {
+                strError = string.Join("; ", result.Errors.Select(e => e.Description));
+            }
+        }
+	}
+
+    async Task ActivateUser(ApplicationUser user)
+    {
+        var existingUser = await UserManager.FindByIdAsync(user.Id);
+        if (existingUser != null)
+        {
+            existingUser.Aktiv = true; // Assuming 'Aktiv' is a property to activate the user
+            var result = await UserManager.UpdateAsync(existingUser);
+            if (result.Succeeded)
+            {
+                ShowDeleteMessage = true;
+                await LoadUsersAsync();
+                StateHasChanged();
+                // Hide the message after a delay
+                await Task.Delay(3000);
+                ShowDeleteMessage = false;
+                StateHasChanged();
+            }
+            else
+            {
+                strError = string.Join("; ", result.Errors.Select(e => e.Description));
+            }
+        }
+    }
+
+    async Task DeleteUser(ApplicationUser user)
+    {
+        var existingUser = await UserManager.FindByIdAsync(user.Id);
+        if (existingUser != null)
+        {
+            await UserManager.DeleteAsync(existingUser);
+            ShowDeleteMessage = true;
+            await LoadUsersAsync();
+            StateHasChanged();
+
+            // Hide the message after a delay
+            await Task.Delay(3000);
+            ShowDeleteMessage = false;
+            StateHasChanged();
+        }
+    }
+}
