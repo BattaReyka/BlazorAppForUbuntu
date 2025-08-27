@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  blazor_app:
+    build: .
+    ports:
+      - "8080:80"
+    environment:
+      # Строка подключения для Blazor Web App.
+      # Указывает на контейнер с SQL Server (имя сервиса: 'db').
+      ConnectionStrings__DefaultConnection: "Server=db;Database=my_database;User Id=sa;Password=my_strong_password;TrustServerCertificate=True"
+    volumes:
+      - ./PraktikumsAufgabe:/app
+
+  db:
+    image: mcr.microsoft.com/mssql/server:2019-latest
+    restart: always
+    user: root
+    ports:
+      - "1433:1433"
+    environment:
+      # Здесь вы задаете пароль для пользователя 'sa'
+      SA_PASSWORD: "xxx"
+      ACCEPT_EULA: "Y"
+    volumes:
+      - db-data:/var/opt/mssql
+
+volumes:
+  db-data:
